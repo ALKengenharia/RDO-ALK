@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>ALK Engenharia - RDO v15.3 Estável</title>
+    <title>ALK Engenharia - RDO v15.5</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
@@ -53,8 +53,12 @@
         <h4>1. Identificação</h4>
         <div class="grid-3">
             <div><label>Nº RDO</label><input type="text" id="in-num"></div>
-            <div><label>Data</label><input type="date" id="in-data"></div>
+            <div><label>Data Atual</label><input type="date" id="in-data"></div>
             <div><label>Obra</label><input type="text" id="in-obra" value="MATEC-TPS"></div>
+            <div><label>Endereço da Obra</label><input type="text" id="in-endereco"></div>
+            <div><label>Data Início</label><input type="date" id="in-data-inicio"></div>
+            <div><label>Prazo</label><input type="text" id="in-prazo"></div>
+            <div style="grid-column: span 3;"><label>Nome Responsável Técnico</label><input type="text" id="in-resp-tec"></div>
         </div>
     </div>
 
@@ -72,7 +76,7 @@
         <div id="mo-area"><div class="grid-input"><input type="text" placeholder="Nome" class="mo-nome"> <input type="text" placeholder="Função" class="mo-funcao"></div></div>
         <button class="btn btn-add" onclick="addRow('mo-area')">+ Pessoa</button>
         <hr style="margin:10px 0; opacity:0.1">
-        <div id="eq-area"><div class="grid-input"><input type="text" placeholder="Equipamento" class="eq-nome"> <input type="number" class="eq-qtd" placeholder="Qtd"></div></div>
+        <div id="eq-area"><div class="grid-input"><input type="text" placeholder="Equipamento" class="eq-nome"> <input type="number" class="eq-qtd" placeholder="Qtd"> <select class="eq-tipo"><option>PRÓPRIO</option><option>LOCADO</option></select></div></div>
         <button class="btn btn-add" onclick="addRow('eq-area')">+ Equipamento</button>
     </div>
 
@@ -98,13 +102,21 @@
     <div id="block-header" class="pdf-block">
         <table class="pdf-table">
             <tr>
-                <td rowspan="2" id="out-logo" style="width:25%; text-align:center;">ALK</td>
+                <td rowspan="4" id="out-logo" style="width:25%; text-align:center; vertical-align: middle;">ALK</td>
                 <td colspan="2" class="bg-gray">RELATÓRIO DIÁRIO DE OBRA (RDO)</td>
                 <td style="width:15%">Nº: <strong id="out-num"></strong></td>
             </tr>
             <tr>
-                <td><strong>OBRA:</strong> <span id="out-obra"></span></td>
+                <td colspan="2"><strong>OBRA:</strong> <span id="out-obra"></span></td>
                 <td><strong>DATA:</strong> <span id="out-data"></span></td>
+            </tr>
+            <tr>
+                <td colspan="2"><strong>ENDEREÇO:</strong> <span id="out-endereco"></span></td>
+                <td><strong>INÍCIO:</strong> <span id="out-data-inicio"></span></td>
+            </tr>
+            <tr>
+                <td><strong>RESP. TÉCNICO:</strong> <span id="out-resp-tec"></span></td>
+                <td><strong>PRAZO:</strong> <span id="out-prazo"></span></td>
                 <td><strong>CONTRATO:</strong> MATEC-TPS</td>
             </tr>
         </table>
@@ -116,8 +128,8 @@
 
     <div id="block-mo" class="pdf-block">
         <div style="display:flex; gap:2px;">
-            <table class="pdf-table" style="width:60%"><tr class="bg-gray"><td colspan="2">MÃO DE OBRA</td></tr><tbody id="pdf-mo"></tbody></table>
-            <table class="pdf-table" style="width:40%"><tr class="bg-gray"><td colspan="2">EQUIPAMENTOS</td></tr><tbody id="pdf-eq"></tbody></table>
+            <table class="pdf-table" style="width:50%"><tr class="bg-gray"><td colspan="2">MÃO DE OBRA</td></tr><tbody id="pdf-mo"></tbody></table>
+            <table class="pdf-table" style="width:50%"><tr class="bg-gray"><td colspan="3">EQUIPAMENTOS</td></tr><tbody id="pdf-eq"></tbody></table>
         </div>
     </div>
 
@@ -158,7 +170,9 @@
 
     function addRow(id) {
         const div = document.createElement('div'); div.className = 'grid-input';
-        div.innerHTML = id === 'mo-area' ? '<input type="text" class="mo-nome"> <input type="text" class="mo-funcao">' : '<input type="text" class="eq-nome"> <input type="number" class="eq-qtd">';
+        div.innerHTML = id === 'mo-area' ? 
+            '<input type="text" class="mo-nome"> <input type="text" class="mo-funcao">' : 
+            '<input type="text" class="eq-nome"> <input type="number" class="eq-qtd"> <select class="eq-tipo"><option>PRÓPRIO</option><option>LOCADO</option></select>';
         document.getElementById(id).appendChild(div);
     }
 
@@ -185,6 +199,10 @@
         document.getElementById('out-num').innerText = document.getElementById('in-num').value;
         document.getElementById('out-obra').innerText = document.getElementById('in-obra').value;
         document.getElementById('out-data').innerText = document.getElementById('in-data').value;
+        document.getElementById('out-endereco').innerText = document.getElementById('in-endereco').value;
+        document.getElementById('out-data-inicio').innerText = document.getElementById('in-data-inicio').value;
+        document.getElementById('out-prazo').innerText = document.getElementById('in-prazo').value;
+        document.getElementById('out-resp-tec').innerText = document.getElementById('in-resp-tec').value;
         document.getElementById('out-tarefas').innerText = document.getElementById('in-tarefas').value;
         document.getElementById('out-ocorrencias').innerText = document.getElementById('in-ocorrencias').value;
         document.getElementById('out-clima-m').innerText = document.getElementById('in-clima-m').value;
@@ -198,7 +216,8 @@
 
         const eqT = document.getElementById('pdf-eq'); eqT.innerHTML = '';
         document.querySelectorAll('#eq-area .grid-input').forEach(r => {
-            const n = r.querySelector('.eq-nome').value; if(n) eqT.innerHTML += `<tr><td>${n}</td><td>${r.querySelector('.eq-qtd').value}</td></tr>`;
+            const n = r.querySelector('.eq-nome').value; 
+            if(n) eqT.innerHTML += `<tr><td>${n}</td><td style="width:30px; text-align:center;">${r.querySelector('.eq-qtd').value}</td><td style="font-size:8px;">${r.querySelector('.eq-tipo').value}</td></tr>`;
         });
 
         const pG = document.getElementById('out-photos'); pG.innerHTML = '';
