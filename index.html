@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>ALK Engenharia - RDO v15.3 Estável</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        :root { --blue-dark: #0a1931; --accent: #b90000; --orange: #f39c12; --gray-dark: #2c3e50; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #eef2f5; margin: 0; padding: 20px; display: flex; gap: 20px; }
+        
+        .sidebar { width: 300px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); height: 95vh; display: flex; flex-direction: column; }
+        .main-content { flex: 1; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); overflow-y: auto; height: 95vh; }
+        
+        .form-section { margin-bottom: 20px; border: 1px solid #ddd; padding: 15px; border-radius: 5px; }
+        .form-section h4 { margin: 0 0 15px 0; color: var(--blue-dark); text-transform: uppercase; font-size: 13px; border-left: 4px solid var(--accent); padding-left: 10px; }
+        
+        .grid-input { display: flex; gap: 10px; margin-bottom: 10px; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        input, textarea, select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 13px; }
+        label { display: block; font-size: 11px; font-weight: bold; margin-bottom: 3px; color: #555; }
+        
+        .btn { padding: 10px; border: none; border-radius: 4px; color: white; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .btn-clear { background: var(--orange); width: 100%; margin-bottom: 10px; }
+        .btn-pdf { background: var(--blue-dark); width: 100%; font-size: 16px; margin-top: 15px; }
+        .btn-add { background: var(--gray-dark); font-size: 10px; margin-top: 5px; }
+        .btn-admin { background: #7f8c8d; width: 100%; margin-top: 5px; font-size: 11px; }
+
+        /* ESTILO DO PDF */
+        .pdf-block { width: 180mm; background: white; margin-bottom: 10px; }
+        .pdf-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        .pdf-table td { border: 1px solid #000; padding: 6px; font-size: 10px; word-wrap: break-word; vertical-align: top; }
+        .bg-gray { background: #eeeeee; font-weight: bold; text-align: center; text-transform: uppercase; }
+        .text-box { border: 1px solid #000; min-height: 50px; padding: 8px; font-size: 10px; white-space: pre-wrap; margin-bottom: 5px; }
+        
+        #pdf-render-zone { position: absolute; left: -9999px; top: 0; width: 185mm; }
+    </style>
+</head>
+<body>
+
+<div class="sidebar">
+    <h3 style="margin:0; font-size:16px;">SISTEMA ALK</h3>
+    <div id="history-list" style="flex:1; overflow-y:auto; margin-top:10px;"></div>
+    <hr style="width:100%">
+    <button class="btn btn-admin" onclick="adminClearHistory()">LIMPAR HISTÓRICO (SENHA)</button>
+    <button class="btn btn-admin" onclick="adminChangePass()">ALTERAR SENHA</button>
+</div>
+
+<div class="main-content">
+    <button class="btn btn-clear" onclick="clearCurrentForm()">🧹 NOVO RELATÓRIO</button>
+
+    <div class="form-section">
+        <h4>1. Identificação</h4>
+        <div class="grid-3">
+            <div><label>Nº RDO</label><input type="text" id="in-num"></div>
+            <div><label>Data</label><input type="date" id="in-data"></div>
+            <div><label>Obra</label><input type="text" id="in-obra" value="MATEC-TPS"></div>
+        </div>
+    </div>
+
+    <div class="form-section">
+        <h4>2. Clima</h4>
+        <div class="grid-3">
+            <div><label>Manhã</label><select id="in-clima-m"><option>ENSOLARADO</option><option>NUBLADO</option><option>CHUVA</option></select></div>
+            <div><label>Tarde</label><select id="in-clima-t"><option>ENSOLARADO</option><option>NUBLADO</option><option>CHUVA</option></select></div>
+            <div><label>Noite</label><select id="in-clima-n"><option>NORMAL</option><option>NUBLADO</option><option>CHUVA</option><option>SEM OBRA</option></select></div>
+        </div>
+    </div>
+
+    <div class="form-section">
+        <h4>3. Equipe e Equipamentos</h4>
+        <div id="mo-area"><div class="grid-input"><input type="text" placeholder="Nome" class="mo-nome"> <input type="text" placeholder="Função" class="mo-funcao"></div></div>
+        <button class="btn btn-add" onclick="addRow('mo-area')">+ Pessoa</button>
+        <hr style="margin:10px 0; opacity:0.1">
+        <div id="eq-area"><div class="grid-input"><input type="text" placeholder="Equipamento" class="eq-nome"> <input type="number" class="eq-qtd" placeholder="Qtd"></div></div>
+        <button class="btn btn-add" onclick="addRow('eq-area')">+ Equipamento</button>
+    </div>
+
+    <div class="form-section">
+        <h4>4. Relato</h4>
+        <label>Tarefas Realizadas</label><textarea id="in-tarefas" rows="6"></textarea>
+        <label>Ocorrências</label><textarea id="in-ocorrencias" rows="3"></textarea>
+    </div>
+
+    <div class="form-section">
+        <h4>5. Fotos e Logos</h4>
+        <div class="grid-3">
+            <div><label>Logo ALK</label><input type="file" onchange="saveImg(this, 'alk_logo')"></div>
+            <div><label>Rodapé</label><input type="file" onchange="saveImg(this, 'alk_footer')"></div>
+            <div><label>Fotos</label><input type="file" id="in-fotos" multiple onchange="loadPhotos(this)"></div>
+        </div>
+    </div>
+
+    <button class="btn btn-pdf" onclick="generatePDF()">💾 GERAR RDO</button>
+</div>
+
+<div id="pdf-render-zone">
+    <div id="block-header" class="pdf-block">
+        <table class="pdf-table">
+            <tr>
+                <td rowspan="2" id="out-logo" style="width:25%; text-align:center;">ALK</td>
+                <td colspan="2" class="bg-gray">RELATÓRIO DIÁRIO DE OBRA (RDO)</td>
+                <td style="width:15%">Nº: <strong id="out-num"></strong></td>
+            </tr>
+            <tr>
+                <td><strong>OBRA:</strong> <span id="out-obra"></span></td>
+                <td><strong>DATA:</strong> <span id="out-data"></span></td>
+                <td><strong>CONTRATO:</strong> MATEC-TPS</td>
+            </tr>
+        </table>
+        <table class="pdf-table" style="margin-top:5px">
+            <tr class="bg-gray"><td>MANHÃ</td><td>TARDE</td><td>NOITE</td></tr>
+            <tr style="text-align:center"><td id="out-clima-m"></td><td id="out-clima-t"></td><td id="out-clima-n"></td></tr>
+        </table>
+    </div>
+
+    <div id="block-mo" class="pdf-block">
+        <div style="display:flex; gap:2px;">
+            <table class="pdf-table" style="width:60%"><tr class="bg-gray"><td colspan="2">MÃO DE OBRA</td></tr><tbody id="pdf-mo"></tbody></table>
+            <table class="pdf-table" style="width:40%"><tr class="bg-gray"><td colspan="2">EQUIPAMENTOS</td></tr><tbody id="pdf-eq"></tbody></table>
+        </div>
+    </div>
+
+    <div id="block-tarefas" class="pdf-block">
+        <div class="bg-gray" style="border:1px solid #000; padding:2px;">ATIVIDADES REALIZADAS</div>
+        <div id="out-tarefas" class="text-box"></div>
+    </div>
+
+    <div id="block-ocorrencias" class="pdf-block">
+        <div class="bg-gray" style="border:1px solid #000; padding:2px;">OCORRÊNCIAS</div>
+        <div id="out-ocorrencias" class="text-box"></div>
+    </div>
+
+    <div id="block-fotos" class="pdf-block">
+        <div class="bg-gray" style="border:1px solid #000; padding:2px;">REGISTRO FOTOGRÁFICO</div>
+        <div id="out-photos" style="display:grid; grid-template-columns:1fr 1fr; gap:5px; margin-top:5px"></div>
+    </div>
+
+    <div id="block-assinaturas" class="pdf-block">
+        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; text-align:center; font-size:9px;">
+            <div style="border-top:1px solid #000; padding-top:5px;">RESPONSÁVEL TÉCNICO ALK</div>
+            <div style="border-top:1px solid #000; padding-top:5px;">CONTRATADA</div>
+            <div style="border-top:1px solid #000; padding-top:5px;">FISCALIZAÇÃO</div>
+        </div>
+        <div id="out-footer" style="margin-top:15px; text-align:center;"></div>
+    </div>
+</div>
+
+<script>
+    let reports = JSON.parse(localStorage.getItem('alk_v15_final') || '[]');
+    let photos = [];
+
+    window.onload = () => { renderHistory(); loadSettings(); setNum(); };
+
+    function setNum() { 
+        document.getElementById('in-num').value = (reports.length + 1).toString().padStart(3, '0') + "/2026"; 
+    }
+
+    function addRow(id) {
+        const div = document.createElement('div'); div.className = 'grid-input';
+        div.innerHTML = id === 'mo-area' ? '<input type="text" class="mo-nome"> <input type="text" class="mo-funcao">' : '<input type="text" class="eq-nome"> <input type="number" class="eq-qtd">';
+        document.getElementById(id).appendChild(div);
+    }
+
+    function saveImg(i, k) {
+        const r = new FileReader(); r.onload = (e) => { localStorage.setItem(k, e.target.result); loadSettings(); }; r.readAsDataURL(i.files[0]);
+    }
+
+    function loadSettings() {
+        const l = localStorage.getItem('alk_logo'), f = localStorage.getItem('alk_footer');
+        if(l) document.getElementById('out-logo').innerHTML = `<img src="${l}" style="max-height:45px">`;
+        if(f) document.getElementById('out-footer').innerHTML = `<img src="${f}" style="width:100%">`;
+    }
+
+    function loadPhotos(i) {
+        photos = [];
+        Array.from(i.files).forEach(f => {
+            const r = new FileReader(); r.onload = (e) => photos.push(e.target.result); r.readAsDataURL(f);
+        });
+    }
+
+    async function generatePDF() {
+        const btn = document.querySelector('.btn-pdf'); btn.innerText = "⏳ GERANDO PDF...";
+        
+        document.getElementById('out-num').innerText = document.getElementById('in-num').value;
+        document.getElementById('out-obra').innerText = document.getElementById('in-obra').value;
+        document.getElementById('out-data').innerText = document.getElementById('in-data').value;
+        document.getElementById('out-tarefas').innerText = document.getElementById('in-tarefas').value;
+        document.getElementById('out-ocorrencias').innerText = document.getElementById('in-ocorrencias').value;
+        document.getElementById('out-clima-m').innerText = document.getElementById('in-clima-m').value;
+        document.getElementById('out-clima-t').innerText = document.getElementById('in-clima-t').value;
+        document.getElementById('out-clima-n').innerText = document.getElementById('in-clima-n').value;
+
+        const moT = document.getElementById('pdf-mo'); moT.innerHTML = '';
+        document.querySelectorAll('#mo-area .grid-input').forEach(r => {
+            const n = r.querySelector('.mo-nome').value; if(n) moT.innerHTML += `<tr><td>${n}</td><td>${r.querySelector('.mo-funcao').value}</td></tr>`;
+        });
+
+        const eqT = document.getElementById('pdf-eq'); eqT.innerHTML = '';
+        document.querySelectorAll('#eq-area .grid-input').forEach(r => {
+            const n = r.querySelector('.eq-nome').value; if(n) eqT.innerHTML += `<tr><td>${n}</td><td>${r.querySelector('.eq-qtd').value}</td></tr>`;
+        });
+
+        const pG = document.getElementById('out-photos'); pG.innerHTML = '';
+        photos.forEach(p => pG.innerHTML += `<div style="border:1px solid #000; height:180px; display:flex; align-items:center; justify-content:center"><img src="${p}" style="max-width:100%; max-height:100%"></div>`);
+
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const pdfHeight = 297;
+        const margin = 15;
+        let currentY = margin;
+
+        const blocks = ['block-header', 'block-mo', 'block-tarefas', 'block-ocorrencias', 'block-fotos', 'block-assinaturas'];
+
+        for (let blockId of blocks) {
+            const element = document.getElementById(blockId);
+            const canvas = await html2canvas(element, { scale: 2 });
+            const imgData = canvas.toDataURL('image/jpeg', 0.95);
+            const imgWidth = 180;
+            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+            let spacing = 5; 
+            if (blockId === 'block-assinaturas') spacing = 20;
+
+            if (currentY + imgHeight + spacing > pdfHeight - margin && blockId !== 'block-header') {
+                pdf.addPage();
+                currentY = margin;
+            } else {
+                currentY += spacing;
+            }
+
+            pdf.addImage(imgData, 'JPEG', 15, currentY, imgWidth, imgHeight);
+            currentY += imgHeight;
+        }
+
+        pdf.save(`RDO_ALK_${document.getElementById('in-num').value.replace('/','-')}.pdf`);
+        reports.push({num: document.getElementById('in-num').value, data: document.getElementById('in-data').value});
+        localStorage.setItem('alk_v15_final', JSON.stringify(reports));
+        renderHistory(); setNum();
+        btn.innerText = "💾 GERAR RDO";
+    }
+
+    function renderHistory() {
+        document.getElementById('history-list').innerHTML = reports.slice().reverse().map(r => `<div style="font-size:11px; padding:5px; border-bottom:1px solid #eee">RDO ${r.num}</div>`).join('');
+    }
+
+    function adminClearHistory() { if(prompt("Senha:") === (localStorage.getItem('alk_pass') || '0000')) { localStorage.setItem('alk_v15_final', '[]'); location.reload(); } }
+    function adminChangePass() { if(prompt("Senha:") === (localStorage.getItem('alk_pass') || '0000')) { const n = prompt("Nova:"); if(n) localStorage.setItem('alk_pass', n); } }
+    function clearCurrentForm() { if(confirm("Deseja limpar todos os campos?")) location.reload(); }
+</script>
+</body>
+</html>
