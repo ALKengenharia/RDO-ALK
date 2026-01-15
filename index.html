@@ -26,7 +26,6 @@
         .btn-add { background: var(--gray-dark); font-size: 10px; margin-top: 5px; }
         .btn-admin { background: #7f8c8d; width: 100%; margin-top: 5px; font-size: 11px; }
 
-        /* ESTILO DO PDF */
         .pdf-block { width: 180mm; background: white; margin-bottom: 10px; }
         .pdf-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
         .pdf-table td { border: 1px solid #000; padding: 6px; font-size: 10px; word-wrap: break-word; vertical-align: top; }
@@ -73,8 +72,9 @@
 
     <div class="form-section">
         <h4>3. Equipe e Equipamentos</h4>
-        <div id="mo-area"><div class="grid-input"><input type="text" placeholder="Nome" class="mo-nome"> <input type="text" placeholder="Função" class="mo-funcao"></div></div>
-        <button class="btn btn-add" onclick="addRow('mo-area')">+ Pessoa</button>
+        <div id="mo-area"><div class="grid-input"><input type="text" placeholder="Função" class="mo-funcao"> <input type="number" placeholder="Qtd" class="mo-qtd"></div></div>
+        <button class="btn btn-add" onclick="addRow('mo-area')">+ Função</button>
+        <div style="margin-top:10px;"><a href="https://docs.google.com/spreadsheets/d/1Rz1e44P9wjxqwzZx_LEj2eFiKA87ILRL/edit?usp=sharing" target="_blank" style="font-size:11px; color:var(--accent); font-weight:bold;">🔗 VER EFETIVO NOMINAL (PLANILHA)</a></div>
         <hr style="margin:10px 0; opacity:0.1">
         <div id="eq-area"><div class="grid-input"><input type="text" placeholder="Equipamento" class="eq-nome"> <input type="number" class="eq-qtd" placeholder="Qtd"> <select class="eq-tipo"><option>PRÓPRIO</option><option>LOCADO</option></select></div></div>
         <button class="btn btn-add" onclick="addRow('eq-area')">+ Equipamento</button>
@@ -128,7 +128,11 @@
 
     <div id="block-mo" class="pdf-block">
         <div style="display:flex; gap:2px;">
-            <table class="pdf-table" style="width:50%"><tr class="bg-gray"><td colspan="2">MÃO DE OBRA</td></tr><tbody id="pdf-mo"></tbody></table>
+            <table class="pdf-table" style="width:50%">
+                <tr class="bg-gray"><td colspan="2">MÃO DE OBRA</td></tr>
+                <tr><td colspan="2" style="font-size:8px; text-align:center; color:blue; font-weight:bold;">CLIQUE AQUI PARA VER EFETIVO NOMINAL</td></tr>
+                <tbody id="pdf-mo"></tbody>
+            </table>
             <table class="pdf-table" style="width:50%"><tr class="bg-gray"><td colspan="3">EQUIPAMENTOS</td></tr><tbody id="pdf-eq"></tbody></table>
         </div>
     </div>
@@ -161,6 +165,7 @@
 <script>
     let reports = JSON.parse(localStorage.getItem('alk_v15_final') || '[]');
     let photos = [];
+    const SPREADSHEET_URL = "https://docs.google.com/spreadsheets/d/1Rz1e44P9wjxqwzZx_LEj2eFiKA87ILRL/edit?usp=sharing";
 
     window.onload = () => { renderHistory(); loadSettings(); setNum(); };
 
@@ -171,7 +176,7 @@
     function addRow(id) {
         const div = document.createElement('div'); div.className = 'grid-input';
         div.innerHTML = id === 'mo-area' ? 
-            '<input type="text" class="mo-nome"> <input type="text" class="mo-funcao">' : 
+            '<input type="text" placeholder="Função" class="mo-funcao"> <input type="number" placeholder="Qtd" class="mo-qtd">' : 
             '<input type="text" class="eq-nome"> <input type="number" class="eq-qtd"> <select class="eq-tipo"><option>PRÓPRIO</option><option>LOCADO</option></select>';
         document.getElementById(id).appendChild(div);
     }
@@ -211,7 +216,9 @@
 
         const moT = document.getElementById('pdf-mo'); moT.innerHTML = '';
         document.querySelectorAll('#mo-area .grid-input').forEach(r => {
-            const n = r.querySelector('.mo-nome').value; if(n) moT.innerHTML += `<tr><td>${n}</td><td>${r.querySelector('.mo-funcao').value}</td></tr>`;
+            const f = r.querySelector('.mo-funcao').value; 
+            const q = r.querySelector('.mo-qtd').value;
+            if(f) moT.innerHTML += `<tr><td>${f}</td><td style="width:30px; text-align:center;">${q}</td></tr>`;
         });
 
         const eqT = document.getElementById('pdf-eq'); eqT.innerHTML = '';
@@ -249,6 +256,14 @@
             }
 
             pdf.addImage(imgData, 'JPEG', 15, currentY, imgWidth, imgHeight);
+
+            // LÓGICA DO LINK NO PDF:
+            if (blockId === 'block-mo') {
+                // Posiciona o link exatamente sobre a linha "CLIQUE AQUI PARA VER..."
+                // 15mm (margem esquerda) + ~45mm (centro da coluna de MO)
+                pdf.link(15, currentY + 7, 90, 8, { url: SPREADSHEET_URL });
+            }
+
             currentY += imgHeight;
         }
 
