@@ -2,66 +2,86 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>ALK Engenharia - RDO v15.5</title>
+    <title>ALK Engenharia - RDO v16.1</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
-        :root { --blue-dark: #0a1931; --accent: #b90000; --orange: #f39c12; --gray-dark: #2c3e50; }
+        :root { --blue-dark: #0a1931; --accent: #b90000; --orange: #f39c12; --gray-dark: #2c3e50; --green: #27ae60; }
         body { font-family: 'Segoe UI', Arial, sans-serif; background: #eef2f5; margin: 0; padding: 20px; display: flex; gap: 20px; }
-        
         .sidebar { width: 300px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); height: 95vh; display: flex; flex-direction: column; }
         .main-content { flex: 1; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); overflow-y: auto; height: 95vh; }
-        
         .form-section { margin-bottom: 20px; border: 1px solid #ddd; padding: 15px; border-radius: 5px; }
         .form-section h4 { margin: 0 0 15px 0; color: var(--blue-dark); text-transform: uppercase; font-size: 13px; border-left: 4px solid var(--accent); padding-left: 10px; }
-        
         .grid-input { display: flex; gap: 10px; margin-bottom: 10px; }
         .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
         input, textarea, select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 13px; }
         label { display: block; font-size: 11px; font-weight: bold; margin-bottom: 3px; color: #555; }
-        
-        .btn { padding: 10px; border: none; border-radius: 4px; color: white; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .btn { padding: 10px; border: none; border-radius: 4px; color: white; cursor: pointer; font-weight: bold; transition: 0.3s; text-align: center; text-decoration: none; display: block; margin-bottom: 5px; }
         .btn-clear { background: var(--orange); width: 100%; margin-bottom: 10px; }
         .btn-pdf { background: var(--blue-dark); width: 100%; font-size: 16px; margin-top: 15px; }
-        .btn-add { background: var(--gray-dark); font-size: 10px; margin-top: 5px; }
-        .btn-admin { background: #7f8c8d; width: 100%; margin-top: 5px; font-size: 11px; }
-
+        .btn-add { background: var(--gray-dark); font-size: 10px; margin-top: 5px; width: auto; display: inline-block; }
+        .btn-admin { background: #7f8c8d; width: 100%; font-size: 11px; }
+        .btn-link { background: var(--blue-dark); font-size: 11px; }
+        .btn-green { background: var(--green); font-size: 11px; }
+        .btn-delete { background: var(--accent); font-size: 10px; padding: 4px; display: inline-block; margin: 2px; }
+        .btn-edit { background: var(--orange); font-size: 10px; padding: 4px; display: inline-block; margin: 2px; }
         .pdf-block { width: 180mm; background: white; margin-bottom: 10px; }
         .pdf-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
         .pdf-table td { border: 1px solid #000; padding: 6px; font-size: 10px; word-wrap: break-word; vertical-align: top; }
         .bg-gray { background: #eeeeee; font-weight: bold; text-align: center; text-transform: uppercase; }
         .text-box { border: 1px solid #000; min-height: 50px; padding: 8px; font-size: 10px; white-space: pre-wrap; margin-bottom: 5px; }
-        
         #pdf-render-zone { position: absolute; left: -9999px; top: 0; width: 185mm; }
+        .modal { display:none; position:fixed; z-index:100; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.5); }
+        .modal-content { background:white; margin:5% auto; padding:20px; width:50%; border-radius:8px; max-height: 80vh; overflow-y: auto; }
     </style>
 </head>
 <body>
+
+<div id="modalObras" class="modal">
+    <div class="modal-content">
+        <h3>Gerenciar Obras Cadastradas</h3>
+        <table style="width:100%; border-collapse: collapse;" border="1">
+            <thead><tr class="bg-gray"><td>Nome da Obra</td><td style="width:120px">Ações</td></tr></thead>
+            <tbody id="lista-obras-gerenciar"></tbody>
+        </table>
+        <br>
+        <button class="btn btn-admin" onclick="fecharModal()">FECHAR</button>
+    </div>
+</div>
 
 <div class="sidebar">
     <h3 style="margin:0; font-size:16px;">SISTEMA ALK</h3>
     <div id="history-list" style="flex:1; overflow-y:auto; margin-top:10px;"></div>
     <hr style="width:100%">
+    <a href="https://drive.google.com/drive/folders/1y-OtO72DP11CK3K2Z4zVvYKWucdfVOqv?usp=drive_link" target="_blank" class="btn btn-link">📂 VER RDO´S GERADOS</a>
+    <button class="btn btn-green" onclick="cadastrarObra()">🏗️ CADASTRAR NOVA OBRA</button>
+    <button class="btn btn-admin" onclick="abrirModal()">⚙️ EDITAR / EXCLUIR OBRA</button>
+    <a href="https://docs.google.com/spreadsheets/d/1Rz1e44P9wjxqwzZx_LEj2eFiKA87ILRL/edit?usp=sharing" target="_blank" class="btn btn-link">📊 VER EFETIVO NOMINAL</a>
+    <hr style="width:100%">
     <button class="btn btn-admin" onclick="adminClearHistory()">LIMPAR HISTÓRICO (SENHA)</button>
     <button class="btn btn-admin" onclick="adminChangePass()">ALTERAR SENHA</button>
 </div>
-<div style="margin-top:10px;"><a href="https://drive.google.com/drive/folders/1y-OtO72DP11CK3K2Z4zVvYKWucdfVOqv?usp=drive_link" target="_blank" style="font-size:11px; color:var(--accent); font-weight:bold;">🔗 VER RDO´S GERADOS</a></div>
 
 <div class="main-content">
     <button class="btn btn-clear" onclick="clearCurrentForm()">🧹 NOVO RELATÓRIO</button>
-
     <div class="form-section">
         <h4>1. Identificação</h4>
         <div class="grid-3">
+            <div style="grid-column: span 3;">
+                <label>Selecionar Obra Cadastrada</label>
+                <select id="sel-obra" onchange="carregarDadosObra()">
+                    <option value="">-- Selecione uma obra --</option>
+                </select>
+            </div>
             <div><label>Nº RDO</label><input type="text" id="in-num"></div>
             <div><label>Data Atual</label><input type="date" id="in-data"></div>
-            <div><label>Obra</label><input type="text" id="in-obra" value="MATEC-TPS"></div>
+            <div><label>Obra</label><input type="text" id="in-obra"></div>
             <div><label>Endereço da Obra</label><input type="text" id="in-endereco"></div>
             <div><label>Data Início</label><input type="date" id="in-data-inicio"></div>
             <div><label>Prazo</label><input type="text" id="in-prazo"></div>
             <div style="grid-column: span 3;"><label>Nome Responsável Técnico</label><input type="text" id="in-resp-tec"></div>
         </div>
     </div>
-
     <div class="form-section">
         <h4>2. Clima</h4>
         <div class="grid-3">
@@ -70,23 +90,19 @@
             <div><label>Noite</label><select id="in-clima-n"><option>NORMAL</option><option>NUBLADO</option><option>CHUVA</option><option>SEM OBRA</option></select></div>
         </div>
     </div>
-
     <div class="form-section">
         <h4>3. Equipe e Equipamentos</h4>
         <div id="mo-area"><div class="grid-input"><input type="text" placeholder="Função" class="mo-funcao"> <input type="number" placeholder="Qtd" class="mo-qtd"></div></div>
         <button class="btn btn-add" onclick="addRow('mo-area')">+ Função</button>
-        <div style="margin-top:10px;"><a href="https://docs.google.com/spreadsheets/d/1Rz1e44P9wjxqwzZx_LEj2eFiKA87ILRL/edit?usp=sharing" target="_blank" style="font-size:11px; color:var(--accent); font-weight:bold;">🔗 VER EFETIVO NOMINAL (PLANILHA)</a></div>
         <hr style="margin:10px 0; opacity:0.1">
         <div id="eq-area"><div class="grid-input"><input type="text" placeholder="Equipamento" class="eq-nome"> <input type="number" class="eq-qtd" placeholder="Qtd"> <select class="eq-tipo"><option>PRÓPRIO</option><option>LOCADO</option></select></div></div>
         <button class="btn btn-add" onclick="addRow('eq-area')">+ Equipamento</button>
     </div>
-      
     <div class="form-section">
         <h4>4. Relato</h4>
         <label>Tarefas Realizadas</label><textarea id="in-tarefas" rows="6"></textarea>
         <label>Ocorrências</label><textarea id="in-ocorrencias" rows="3"></textarea>
     </div>
-
     <div class="form-section">
         <h4>5. Fotos e Logos</h4>
         <div class="grid-3">
@@ -95,7 +111,6 @@
             <div><label>Fotos</label><input type="file" id="in-fotos" multiple onchange="loadPhotos(this)"></div>
         </div>
     </div>
-
     <button class="btn btn-pdf" onclick="generatePDF()">💾 GERAR RDO</button>
 </div>
 
@@ -103,105 +118,105 @@
     <div id="block-header" class="pdf-block">
         <table class="pdf-table">
             <tr>
-                <td rowspan="4" id="out-logo" style="width:25%; text-align:center; vertical-align: middle;">ALK</td>
+                <td rowspan="4" id="out-logo" style="width:30%; text-align:center; vertical-align: middle;">ALK</td>
                 <td colspan="2" class="bg-gray">RELATÓRIO DIÁRIO DE OBRA (RDO)</td>
                 <td style="width:15%">Nº: <strong id="out-num"></strong></td>
             </tr>
-            <tr>
-                <td colspan="2"><strong>OBRA:</strong> <span id="out-obra"></span></td>
-                <td><strong>DATA:</strong> <span id="out-data"></span></td>
-            </tr>
-            <tr>
-                <td colspan="2"><strong>ENDEREÇO:</strong> <span id="out-endereco"></span></td>
-                <td><strong>INÍCIO:</strong> <span id="out-data-inicio"></span></td>
-            </tr>
-            <tr>
-                <td><strong>RESP. TÉCNICO:</strong> <span id="out-resp-tec"></span></td>
-                <td><strong>PRAZO:</strong> <span id="out-prazo"></span></td>
-                <td><strong>CONTRATO:</strong> MATEC-TPS</td>
-            </tr>
+            <tr><td colspan="2"><strong>OBRA:</strong> <span id="out-obra"></span></td><td><strong>DATA:</strong> <span id="out-data"></span></td></tr>
+            <tr><td colspan="2"><strong>ENDEREÇO:</strong> <span id="out-endereco"></span></td><td><strong>INÍCIO:</strong> <span id="out-data-inicio"></span></td></tr>
+            <tr><td><strong>RESP. TÉCNICO:</strong> <span id="out-resp-tec"></span></td><td><strong>PRAZO:</strong> <span id="out-prazo"></span></td><td><strong>CONTRATO:</strong> MATEC-TPS</td></tr>
         </table>
         <table class="pdf-table" style="margin-top:5px">
             <tr class="bg-gray"><td>MANHÃ</td><td>TARDE</td><td>NOITE</td></tr>
             <tr style="text-align:center"><td id="out-clima-m"></td><td id="out-clima-t"></td><td id="out-clima-n"></td></tr>
         </table>
     </div>
-
     <div id="block-mo" class="pdf-block">
         <div style="display:flex; gap:2px;">
             <table class="pdf-table" style="width:50%">
                 <tr class="bg-gray"><td colspan="2">MÃO DE OBRA</td></tr>
-                <tr><td colspan="2" style="font-size:8px; text-align:center; color:blue; font-weight:bold;">CLIQUE AQUI PARA VER EFETIVO NOMINAL</td></tr>
                 <tbody id="pdf-mo"></tbody>
             </table>
             <table class="pdf-table" style="width:50%"><tr class="bg-gray"><td colspan="3">EQUIPAMENTOS</td></tr><tbody id="pdf-eq"></tbody></table>
         </div>
     </div>
-
-    <div id="block-tarefas" class="pdf-block">
-        <div class="bg-gray" style="border:1px solid #000; padding:2px;">ATIVIDADES REALIZADAS</div>
-        <div id="out-tarefas" class="text-box"></div>
-    </div>
-
-    <div id="block-ocorrencias" class="pdf-block">
-        <div class="bg-gray" style="border:1px solid #000; padding:2px;">OCORRÊNCIAS</div>
-        <div id="out-ocorrencias" class="text-box"></div>
-    </div>
-
-    <div id="block-fotos" class="pdf-block">
-        <div class="bg-gray" style="border:1px solid #000; padding:2px;">REGISTRO FOTOGRÁFICO</div>
-        <div id="out-photos" style="display:grid; grid-template-columns:1fr 1fr; gap:5px; margin-top:5px"></div>
-    </div>
-
-    <div id="block-assinaturas" class="pdf-block">
-        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; text-align:center; font-size:9px;">
-            <div style="border-top:1px solid #000; padding-top:5px;">RESPONSÁVEL TÉCNICO ALK</div>
-            <div style="border-top:1px solid #000; padding-top:5px;">CONTRATADA</div>
-            <div style="border-top:1px solid #000; padding-top:5px;">FISCALIZAÇÃO</div>
+    <div id="block-tarefas" class="pdf-block"><div class="bg-gray" style="border:1px solid #000; padding:2px;">ATIVIDADES REALIZADAS</div><div id="out-tarefas" class="text-box"></div></div>
+    <div id="block-ocorrencias" class="pdf-block"><div class="bg-gray" style="border:1px solid #000; padding:2px;">OCORRÊNCIAS</div><div id="out-ocorrencias" class="text-box"></div></div>
+    
+    <div id="block-assinaturas" class="pdf-block" style="border:none;">
+        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; text-align:center; font-size:8px; margin-top:10px;">
+            <div style="border-top:1px solid #000; padding-top:2px;">RESPONSÁVEL TÉCNICO ALK</div>
+            <div style="border-top:1px solid #000; padding-top:2px;">CONTRATADA</div>
+            <div style="border-top:1px solid #000; padding-top:2px;">FISCALIZAÇÃO</div>
         </div>
-        <div id="out-footer" style="margin-top:15px; text-align:center;"></div>
+    </div>
+
+    <div id="block-rodape-img" style="width:180mm; text-align:center;">
+        <div id="out-footer-render"></div>
     </div>
 </div>
 
 <script>
     let reports = JSON.parse(localStorage.getItem('alk_v15_final') || '[]');
+    let obras = JSON.parse(localStorage.getItem('alk_obras') || '[]');
     let photos = [];
     const SPREADSHEET_URL = "https://docs.google.com/spreadsheets/d/1Rz1e44P9wjxqwzZx_LEj2eFiKA87ILRL/edit?usp=sharing";
 
-    window.onload = () => { renderHistory(); loadSettings(); setNum(); };
+    window.onload = () => { renderHistory(); loadSettings(); setNum(); atualizarListaObras(); };
 
-    function setNum() { 
-        document.getElementById('in-num').value = (reports.length + 1).toString().padStart(3, '0') + "/2026"; 
+    function setNum() { document.getElementById('in-num').value = (reports.length + 1).toString().padStart(3, '0') + "/2026"; }
+    function salvarObras() { localStorage.setItem('alk_obras', JSON.stringify(obras)); atualizarListaObras(); }
+    function atualizarListaObras() {
+        const sel = document.getElementById('sel-obra');
+        sel.innerHTML = '<option value="">-- Selecione uma obra --</option>';
+        obras.forEach((o, index) => { sel.innerHTML += `<option value="${index}">${o.nome}</option>`; });
     }
-
+    function carregarDadosObra() {
+        const idx = document.getElementById('sel-obra').value; if(idx === "") return;
+        const o = obras[idx];
+        document.getElementById('in-obra').value = o.nome;
+        document.getElementById('in-endereco').value = o.endereco;
+        if(o.inicio) document.getElementById('in-data-inicio').value = o.inicio;
+        document.getElementById('in-prazo').value = o.prazo;
+        document.getElementById('in-resp-tec').value = o.resp;
+    }
+    function cadastrarObra() {
+        const nome = prompt("Nome da Obra:"); if(!nome) return;
+        obras.push({ nome, endereco: prompt("Endereço:"), inicio: prompt("Data (AAAA-MM-DD):"), prazo: prompt("Prazo:"), resp: prompt("Responsável:") });
+        salvarObras();
+    }
+    function editarObra(idx) {
+        const o = obras[idx];
+        const novoNome = prompt("Editar Nome da Obra:", o.nome); if(!novoNome) return;
+        obras[idx] = { nome: novoNome, endereco: prompt("Endereço:", o.endereco), inicio: prompt("Início:", o.inicio), prazo: prompt("Prazo:", o.prazo), resp: prompt("Responsável:", o.resp) };
+        salvarObras(); abrirModal();
+    }
+    function abrirModal() {
+        const lista = document.getElementById('lista-obras-gerenciar');
+        lista.innerHTML = obras.map((o, i) => `<tr><td style="padding:5px;">${o.nome}</td><td style="text-align:center;"><button class="btn btn-edit" onclick="editarObra(${i})">EDITAR</button><button class="btn btn-delete" onclick="excluirObra(${i})">EXCLUIR</button></td></tr>`).join('');
+        document.getElementById('modalObras').style.display = 'block';
+    }
+    function fecharModal() { document.getElementById('modalObras').style.display = 'none'; }
+    function excluirObra(i) { if(confirm("Excluir?")) { obras.splice(i,1); salvarObras(); abrirModal(); } }
     function addRow(id) {
         const div = document.createElement('div'); div.className = 'grid-input';
-        div.innerHTML = id === 'mo-area' ? 
-            '<input type="text" placeholder="Função" class="mo-funcao"> <input type="number" placeholder="Qtd" class="mo-qtd">' : 
-            '<input type="text" class="eq-nome"> <input type="number" class="eq-qtd"> <select class="eq-tipo"><option>PRÓPRIO</option><option>LOCADO</option></select>';
+        div.innerHTML = id === 'mo-area' ? '<input type="text" placeholder="Função" class="mo-funcao"> <input type="number" placeholder="Qtd" class="mo-qtd">' : '<input type="text" class="eq-nome"> <input type="number" class="eq-qtd"> <select class="eq-tipo"><option>PRÓPRIO</option><option>LOCADO</option></select>';
         document.getElementById(id).appendChild(div);
     }
-
-    function saveImg(i, k) {
-        const r = new FileReader(); r.onload = (e) => { localStorage.setItem(k, e.target.result); loadSettings(); }; r.readAsDataURL(i.files[0]);
-    }
-
+    function saveImg(i, k) { const r = new FileReader(); r.onload = (e) => { localStorage.setItem(k, e.target.result); loadSettings(); }; r.readAsDataURL(i.files[0]); }
     function loadSettings() {
         const l = localStorage.getItem('alk_logo'), f = localStorage.getItem('alk_footer');
-        if(l) document.getElementById('out-logo').innerHTML = `<img src="${l}" style="max-height:45px">`;
-        if(f) document.getElementById('out-footer').innerHTML = `<img src="${f}" style="width:100%">`;
+        if(l) document.getElementById('out-logo').innerHTML = `<img src="${l}" style="max-height:55px; max-width:100%;">`;
+        if(f) document.getElementById('out-footer-render').innerHTML = `<img src="${f}" style="width:100%; height:auto; max-height:22mm;">`;
     }
-
-    function loadPhotos(i) {
-        photos = [];
-        Array.from(i.files).forEach(f => {
-            const r = new FileReader(); r.onload = (e) => photos.push(e.target.result); r.readAsDataURL(f);
-        });
-    }
+    function loadPhotos(i) { photos = []; Array.from(i.files).forEach(f => { const r = new FileReader(); r.onload = (e) => photos.push(e.target.result); r.readAsDataURL(f); }); }
 
     async function generatePDF() {
-        const btn = document.querySelector('.btn-pdf'); btn.innerText = "⏳ GERANDO PDF...";
+        const btn = document.querySelector('.btn-pdf'); btn.innerText = "⏳ GERANDO...";
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF('p', 'mm', 'a4');
         
+        // Sincronizar dados
         document.getElementById('out-num').innerText = document.getElementById('in-num').value;
         document.getElementById('out-obra').innerText = document.getElementById('in-obra').value;
         document.getElementById('out-data').innerText = document.getElementById('in-data').value;
@@ -209,79 +224,83 @@
         document.getElementById('out-data-inicio').innerText = document.getElementById('in-data-inicio').value;
         document.getElementById('out-prazo').innerText = document.getElementById('in-prazo').value;
         document.getElementById('out-resp-tec').innerText = document.getElementById('in-resp-tec').value;
-        document.getElementById('out-tarefas').innerText = document.getElementById('in-tarefas').value;
-        document.getElementById('out-ocorrencias').innerText = document.getElementById('in-ocorrencias').value;
         document.getElementById('out-clima-m').innerText = document.getElementById('in-clima-m').value;
         document.getElementById('out-clima-t').innerText = document.getElementById('in-clima-t').value;
         document.getElementById('out-clima-n').innerText = document.getElementById('in-clima-n').value;
+        document.getElementById('out-tarefas').innerText = document.getElementById('in-tarefas').value;
+        document.getElementById('out-ocorrencias').innerText = document.getElementById('in-ocorrencias').value;
 
         const moT = document.getElementById('pdf-mo'); moT.innerHTML = '';
         document.querySelectorAll('#mo-area .grid-input').forEach(r => {
-            const f = r.querySelector('.mo-funcao').value; 
-            const q = r.querySelector('.mo-qtd').value;
-            if(f) moT.innerHTML += `<tr><td>${f}</td><td style="width:30px; text-align:center;">${q}</td></tr>`;
+            const f = r.querySelector('.mo-funcao').value; if(f) moT.innerHTML += `<tr><td>${f}</td><td style="text-align:center">${r.querySelector('.mo-qtd').value}</td></tr>`;
         });
-
         const eqT = document.getElementById('pdf-eq'); eqT.innerHTML = '';
         document.querySelectorAll('#eq-area .grid-input').forEach(r => {
-            const n = r.querySelector('.eq-nome').value; 
-            if(n) eqT.innerHTML += `<tr><td>${n}</td><td style="width:30px; text-align:center;">${r.querySelector('.eq-qtd').value}</td><td style="font-size:8px;">${r.querySelector('.eq-tipo').value}</td></tr>`;
+            const n = r.querySelector('.eq-nome').value; if(n) eqT.innerHTML += `<tr><td>${n}</td><td style="text-align:center">${r.querySelector('.eq-qtd').value}</td><td style="font-size:8px;">${r.querySelector('.eq-tipo').value}</td></tr>`;
         });
 
-        const pG = document.getElementById('out-photos'); pG.innerHTML = '';
-        photos.forEach(p => pG.innerHTML += `<div style="border:1px solid #000; height:180px; display:flex; align-items:center; justify-content:center"><img src="${p}" style="max-width:100%; max-height:100%"></div>`);
+        // Função para carimbar o rodapé em cada página nova
+        const carimbarRodape = async (p) => {
+            const canvasR = await html2canvas(document.getElementById('block-rodape-img'), { scale: 3 });
+            const hR = (canvasR.height * 180) / canvasR.width;
+            p.addImage(canvasR.toDataURL('image/jpeg', 1.0), 'JPEG', 15, 270, 180, hR);
+        };
 
-        const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        const pdfHeight = 297;
-        const margin = 15;
-        let currentY = margin;
-
-        const blocks = ['block-header', 'block-mo', 'block-tarefas', 'block-ocorrencias', 'block-fotos', 'block-assinaturas'];
-
-        for (let blockId of blocks) {
-            const element = document.getElementById(blockId);
-            const canvas = await html2canvas(element, { scale: 2 });
-            const imgData = canvas.toDataURL('image/jpeg', 0.95);
-            const imgWidth = 180;
-            const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-            let spacing = 5; 
-            if (blockId === 'block-assinaturas') spacing = 20;
-
-            if (currentY + imgHeight + spacing > pdfHeight - margin && blockId !== 'block-header') {
-                pdf.addPage();
-                currentY = margin;
-            } else {
-                currentY += spacing;
+        let currentY = 10;
+        const blocks = ['block-header', 'block-mo', 'block-tarefas', 'block-ocorrencias'];
+        
+        for (let id of blocks) {
+            const canvas = await html2canvas(document.getElementById(id), { scale: 3 });
+            const h = (canvas.height * 180) / canvas.width;
+            
+            if (currentY + h > 260) { 
+                await carimbarRodape(pdf);
+                pdf.addPage(); 
+                currentY = 10; 
             }
-
-            pdf.addImage(imgData, 'JPEG', 15, currentY, imgWidth, imgHeight);
-
-            // LÓGICA DO LINK NO PDF:
-            if (blockId === 'block-mo') {
-                // Posiciona o link exatamente sobre a linha "CLIQUE AQUI PARA VER..."
-                // 15mm (margem esquerda) + ~45mm (centro da coluna de MO)
-                pdf.link(15, currentY + 7, 90, 8, { url: SPREADSHEET_URL });
-            }
-
-            currentY += imgHeight;
+            pdf.addImage(canvas.toDataURL('image/jpeg', 1.0), 'JPEG', 15, currentY, 180, h);
+            currentY += h + 5;
         }
 
-        pdf.save(`RDO_ALK_${document.getElementById('in-num').value.replace('/','-')}.pdf`);
+        if (photos.length > 0) {
+            if (currentY > 240) { await carimbarRodape(pdf); pdf.addPage(); currentY = 15; }
+            pdf.setFontSize(10); pdf.setFillColor(238, 238, 238); pdf.rect(15, currentY, 180, 7, 'F'); pdf.rect(15, currentY, 180, 7, 'S');
+            pdf.text("REGISTRO FOTOGRÁFICO", 105, currentY + 5, { align: "center" });
+            currentY += 10;
+
+            for (let i = 0; i < photos.length; i++) {
+                if (currentY > 210) { 
+                    await carimbarRodape(pdf);
+                    pdf.addPage(); 
+                    currentY = 20; 
+                }
+                const isLeft = i % 2 === 0;
+                pdf.addImage(photos[i], 'JPEG', isLeft ? 15 : 105, currentY, 85, 55);
+                if (!isLeft || i === photos.length - 1) currentY += 60;
+            }
+        }
+
+        // ESPAÇAMENTO E ASSINATURAS NO FINAL
+        currentY += 30;
+        if (currentY > 230) { await carimbarRodape(pdf); pdf.addPage(); currentY = 20; }
+        
+        const canvasAss = await html2canvas(document.getElementById('block-assinaturas'), { scale: 3 });
+        const hAss = (canvasAss.height * 180) / canvasAss.width;
+        pdf.addImage(canvasAss.toDataURL('image/jpeg', 1.0), 'JPEG', 15, currentY, 180, hAss);
+        
+        // Último carimbo de rodapé na última página
+        await carimbarRodape(pdf);
+
+        pdf.save(`RDO_${document.getElementById('in-num').value.replace('/','-')}.pdf`);
         reports.push({num: document.getElementById('in-num').value, data: document.getElementById('in-data').value});
         localStorage.setItem('alk_v15_final', JSON.stringify(reports));
-        renderHistory(); setNum();
-        btn.innerText = "💾 GERAR RDO";
+        renderHistory(); setNum(); btn.innerText = "💾 GERAR RDO";
     }
 
-    function renderHistory() {
-        document.getElementById('history-list').innerHTML = reports.slice().reverse().map(r => `<div style="font-size:11px; padding:5px; border-bottom:1px solid #eee">RDO ${r.num}</div>`).join('');
-    }
-
+    function renderHistory() { document.getElementById('history-list').innerHTML = reports.slice().reverse().map(r => `<div style="font-size:11px; padding:5px; border-bottom:1px solid #eee">RDO ${r.num}</div>`).join(''); }
     function adminClearHistory() { if(prompt("Senha:") === (localStorage.getItem('alk_pass') || '0000')) { localStorage.setItem('alk_v15_final', '[]'); location.reload(); } }
     function adminChangePass() { if(prompt("Senha:") === (localStorage.getItem('alk_pass') || '0000')) { const n = prompt("Nova:"); if(n) localStorage.setItem('alk_pass', n); } }
-    function clearCurrentForm() { if(confirm("Deseja limpar todos os campos?")) location.reload(); }
+    function clearCurrentForm() { location.reload(); }
 </script>
 </body>
 </html>
