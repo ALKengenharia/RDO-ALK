@@ -185,10 +185,21 @@
         }
     }
 
-    function setNum() { 
-        const proximo = (reports.length + 1).toString().padStart(3, '0');
-        document.getElementById('in-num').value = proximo + "/2026"; 
+  function setNum() { 
+    let ultimoNumero = 0;
+
+    if (reports.length > 0) {
+        // Mapeia todos os números removendo o "/2026" e pega o maior
+        const numeros = reports.map(r => {
+            const numApenas = parseInt(r.num.split('/')[0]);
+            return isNaN(numApenas) ? 0 : numApenas;
+        });
+        ultimoNumero = Math.max(...numeros);
     }
+
+    const proximo = (ultimoNumero + 1).toString().padStart(3, '0');
+    document.getElementById('in-num').value = proximo + "/2026"; 
+}
 
     function atualizarListaObras() {
         const sel = document.getElementById('sel-obra');
@@ -329,4 +340,5 @@
 </script>
 </body>
 </html>
+
 
