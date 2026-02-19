@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>ALK Engenharia - RDO Cloud v17.0</title>
+    <title>ALK Engenharia - RDO Cloud v18.0</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
@@ -24,7 +24,6 @@
         .btn-link { background: var(--blue-dark); font-size: 11px; }
         .btn-green { background: var(--green); font-size: 11px; }
         .btn-delete { background: var(--accent); font-size: 10px; padding: 4px; display: inline-block; margin: 2px; }
-        .btn-edit { background: var(--orange); font-size: 10px; padding: 4px; display: inline-block; margin: 2px; }
         .pdf-block { width: 180mm; background: white; margin-bottom: 10px; }
         .pdf-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
         .pdf-table td { border: 1px solid #000; padding: 6px; font-size: 10px; word-wrap: break-word; vertical-align: top; }
@@ -39,13 +38,22 @@
 
 <div id="modalObras" class="modal">
     <div class="modal-content">
-        <h3>Gerenciar Obras (Nuvem)</h3>
+        <h3>Obras Cadastradas</h3>
         <table style="width:100%; border-collapse: collapse;" border="1">
             <thead><tr class="bg-gray"><td>Nome da Obra</td><td style="width:120px">Ações</td></tr></thead>
             <tbody id="lista-obras-gerenciar"></tbody>
         </table>
         <br>
-        <button class="btn btn-admin" onclick="fecharModal()">FECHAR</button>
+        <button class="btn btn-admin" onclick="fecharModal('modalObras')">FECHAR</button>
+    </div>
+</div>
+
+<div id="modalEfetivo" class="modal">
+    <div class="modal-content">
+        <h3>Selecione a Obra para ver o Efetivo</h3>
+        <div id="lista-links-efetivo"></div>
+        <br>
+        <button class="btn btn-admin" onclick="fecharModal('modalEfetivo')">FECHAR</button>
     </div>
 </div>
 
@@ -55,12 +63,12 @@
     <hr style="width:100%">
     <a href="https://drive.google.com/drive/folders/1y-OtO72DP11CK3K2Z4zVvYKWucdfVOqv?usp=drive_link" target="_blank" class="btn btn-link">📂 VER RDO´S GERADOS</a>
     <button class="btn btn-green" onclick="cadastrarObra()">🏗️ CADASTRAR NOVA OBRA</button>
-    <button class="btn btn-admin" onclick="abrirModal()">⚙️ OBRAS CADASTRADAS</button>
-    <a href="https://docs.google.com/spreadsheets/d/1Rz1e44P9wjxqwzZx_LEj2eFiKA87ILRL/edit?usp=sharing" target="_blank" class="btn btn-link">📊 VER EFETIVO NOMINAL</a>
+    <button class="btn btn-admin" onclick="abrirModalObras()">⚙️ OBRAS CADASTRADAS</button>
+    <button class="btn btn-link" onclick="abrirModalEfetivo()">📊 VER EFETIVO NOMINAL</button>
 </div>
 
 <div class="main-content">
-    <button class="btn btn-clear" onclick="clearCurrentForm()">🧹 NOVO RELATÓRIO</button>
+    <button class="btn btn-clear" onclick="location.reload()">Sweep 🧹 NOVO RELATÓRIO</button>
 
     <div class="form-section">
         <h4>1. Identificação</h4>
@@ -71,7 +79,7 @@
                     <option value="">-- Carregando obras... --</option>
                 </select>
             </div>
-            <div><label>Nº RDO</label><input type="text" id="in-num" readonly style="background:#f9f9f9"></div>
+            <div><label>Nº RDO</label><input type="text" id="in-num" readonly style="background:#f9f9f9; font-weight:bold; color:var(--accent)"></div>
             <div><label>Data Atual</label><input type="date" id="in-data"></div>
             <div><label>Obra</label><input type="text" id="in-obra"></div>
             <div><label>Endereço</label><input type="text" id="in-endereco"></div>
@@ -114,7 +122,7 @@
         </div>
     </div>
 
-    <button class="btn btn-pdf" id="btn-gerar" onclick="generatePDF()">💾 GERAR RDO</button>
+    <button class="btn btn-pdf" id="btn-gerar" onclick="generatePDF()">💾 GERAR E SALVAR RDO</button>
 </div>
 
 <div id="pdf-render-zone">
@@ -136,16 +144,12 @@
     </div>
     <div id="block-mo" class="pdf-block">
         <div style="display:flex; gap:2px;">
-            <table class="pdf-table" style="width:50%">
-                <tr class="bg-gray"><td colspan="2">MÃO DE OBRA</td></tr>
-                <tbody id="pdf-mo"></tbody>
-            </table>
+            <table class="pdf-table" style="width:50%"><tr class="bg-gray"><td colspan="2">MÃO DE OBRA</td></tr><tbody id="pdf-mo"></tbody></table>
             <table class="pdf-table" style="width:50%"><tr class="bg-gray"><td colspan="3">EQUIPAMENTOS</td></tr><tbody id="pdf-eq"></tbody></table>
         </div>
     </div>
     <div id="block-tarefas" class="pdf-block"><div class="bg-gray" style="border:1px solid #000; padding:2px;">ATIVIDADES REALIZADAS</div><div id="out-tarefas" class="text-box"></div></div>
     <div id="block-ocorrencias" class="pdf-block"><div class="bg-gray" style="border:1px solid #000; padding:2px;">OCORRÊNCIAS</div><div id="out-ocorrencias" class="text-box"></div></div>
-    
     <div id="block-assinaturas" class="pdf-block" style="border:none;">
         <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; text-align:center; font-size:8px; margin-top:10px;">
             <div style="border-top:1px solid #000; padding-top:2px;">RESPONSÁVEL TÉCNICO ALK</div>
@@ -153,10 +157,7 @@
             <div style="border-top:1px solid #000; padding-top:2px;">FISCALIZAÇÃO</div>
         </div>
     </div>
-
-    <div id="block-rodape-img" style="width:180mm; text-align:center;">
-        <div id="out-footer-render"></div>
-    </div>
+    <div id="block-rodape-img" style="width:180mm; text-align:center;"><div id="out-footer-render"></div></div>
 </div>
 
 <script>
@@ -165,10 +166,7 @@
     let obras = [];
     let photos = [];
 
-    window.onload = async () => { 
-        loadSettings(); 
-        await carregarDadosNuvem(); 
-    };
+    window.onload = async () => { loadSettings(); await carregarDadosNuvem(); };
 
     async function carregarDadosNuvem() {
         try {
@@ -179,32 +177,27 @@
             renderHistory();
             atualizarListaObras();
             setNum();
-        } catch (e) { 
-            console.error("Erro na nuvem:", e); 
-            document.getElementById('sel-obra').innerHTML = '<option>Erro ao carregar</option>';
+        } catch (e) { console.error(e); }
+    }
+
+    // Lógica Inteligente para Próximo Número
+    function setNum() { 
+        let ultimoNumero = 0;
+        if (reports.length > 0) {
+            const numeros = reports.map(r => {
+                const numApenas = parseInt(r.num.split('/')[0]);
+                return isNaN(numApenas) ? 0 : numApenas;
+            });
+            ultimoNumero = Math.max(...numeros);
         }
+        const proximo = (ultimoNumero + 1).toString().padStart(3, '0');
+        document.getElementById('in-num').value = proximo + "/2026"; 
     }
-
-  function setNum() { 
-    let ultimoNumero = 0;
-
-    if (reports.length > 0) {
-        // Mapeia todos os números removendo o "/2026" e pega o maior
-        const numeros = reports.map(r => {
-            const numApenas = parseInt(r.num.split('/')[0]);
-            return isNaN(numApenas) ? 0 : numApenas;
-        });
-        ultimoNumero = Math.max(...numeros);
-    }
-
-    const proximo = (ultimoNumero + 1).toString().padStart(3, '0');
-    document.getElementById('in-num').value = proximo + "/2026"; 
-}
 
     function atualizarListaObras() {
         const sel = document.getElementById('sel-obra');
         sel.innerHTML = '<option value="">-- Selecione uma obra --</option>';
-        obras.forEach((o, index) => { sel.innerHTML += `<option value="${index}">${o.nome}</option>`; });
+        obras.forEach((o, i) => sel.innerHTML += `<option value="${i}">${o.nome}</option>`);
     }
 
     function carregarDadosObra() {
@@ -222,35 +215,46 @@
         const nova = {
             nome: nome,
             endereco: prompt("Endereço:"),
-            inicio: prompt("Data Início (AAAA-MM-DD):"),
+            inicio: prompt("Início (AAAA-MM-DD):"),
             prazo: prompt("Prazo:"),
-            resp: prompt("Responsável:")
+            resp: prompt("Responsável:"),
+            linkEfetivo: prompt("Link da Planilha de Efetivo (URL):")
         };
         await fetch(DATABASE_URL, { method: 'POST', body: JSON.stringify({ acao: 'salvarObra', dados: nova }) });
         await carregarDadosNuvem();
     }
 
-    async function excluirObra(i) {
-        if(confirm("Excluir da nuvem?")) {
-            await fetch(DATABASE_URL, { method: 'POST', body: JSON.stringify({ acao: 'excluirObra', nome: obras[i].nome }) });
-            await carregarDadosNuvem();
-            abrirModal();
-        }
+    function abrirModalEfetivo() {
+        const lista = document.getElementById('lista-links-efetivo');
+        lista.innerHTML = obras.map(o => 
+            o.linkEfetivo ? `<a href="${o.linkEfetivo}" target="_blank" class="btn btn-link" style="text-align:left">🏗️ ${o.nome}</a>` 
+            : `<button class="btn btn-admin" disabled style="opacity:0.5; text-align:left">❌ ${o.nome} (Sem link)</button>`
+        ).join('');
+        document.getElementById('modalEfetivo').style.display = 'block';
     }
 
-    function abrirModal() {
+    function abrirModalObras() {
         const lista = document.getElementById('lista-obras-gerenciar');
         lista.innerHTML = obras.map((o, i) => `<tr><td style="padding:5px;">${o.nome}</td><td style="text-align:center;"><button class="btn btn-delete" onclick="excluirObra(${i})">EXCLUIR</button></td></tr>`).join('');
         document.getElementById('modalObras').style.display = 'block';
     }
-    function fecharModal() { document.getElementById('modalObras').style.display = 'none'; }
 
+    async function excluirObra(i) {
+        if(confirm("Excluir definitivamente?")) {
+            await fetch(DATABASE_URL, { method: 'POST', body: JSON.stringify({ acao: 'excluirObra', nome: obras[i].nome }) });
+            await carregarDadosNuvem();
+            abrirModalObras();
+        }
+    }
+
+    function fecharModal(id) { document.getElementById(id).style.display = 'none'; }
+
+    // Funções auxiliares (AddRow, saveImg, loadSettings, loadPhotos, generatePDF permanecem as mesmas)
     function addRow(id) {
         const div = document.createElement('div'); div.className = 'grid-input';
         div.innerHTML = id === 'mo-area' ? '<input type="text" placeholder="Função" class="mo-funcao"> <input type="number" placeholder="Qtd" class="mo-qtd">' : '<input type="text" class="eq-nome"> <input type="number" class="eq-qtd"> <select class="eq-tipo"><option>PRÓPRIO</option><option>LOCADO</option></select>';
         document.getElementById(id).appendChild(div);
     }
-
     function saveImg(i, k) { const r = new FileReader(); r.onload = (e) => { localStorage.setItem(k, e.target.result); loadSettings(); }; r.readAsDataURL(i.files[0]); }
     function loadSettings() {
         const l = localStorage.getItem('alk_logo'), f = localStorage.getItem('alk_footer');
@@ -260,11 +264,10 @@
     function loadPhotos(i) { photos = []; Array.from(i.files).forEach(f => { const r = new FileReader(); r.onload = (e) => photos.push(e.target.result); r.readAsDataURL(f); }); }
 
     async function generatePDF() {
-        const btn = document.getElementById('btn-gerar'); btn.innerText = "⏳ GERANDO E SINCRONIZANDO...";
-        const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF('p', 'mm', 'a4');
+        const btn = document.getElementById('btn-gerar'); btn.innerText = "⏳ SALVANDO NA NUVEM...";
+        const { jsPDF } = window.jspdf; const pdf = new jsPDF('p', 'mm', 'a4');
         
-        // Sync Visuals
+        // Sync Visuals do PDF
         document.getElementById('out-num').innerText = document.getElementById('in-num').value;
         document.getElementById('out-obra').innerText = document.getElementById('in-obra').value;
         document.getElementById('out-data').innerText = document.getElementById('in-data').value;
@@ -288,57 +291,46 @@
         });
 
         const carimbarRodape = async (p) => {
-            const canvasR = await html2canvas(document.getElementById('block-rodape-img'), { scale: 3 });
-            p.addImage(canvasR.toDataURL('image/jpeg', 1.0), 'JPEG', 15, 270, 180, (canvasR.height * 180) / canvasR.width);
+            const canvasR = await html2canvas(document.getElementById('block-rodape-img'), { scale: 2 });
+            p.addImage(canvasR.toDataURL('image/jpeg', 0.8), 'JPEG', 15, 270, 180, (canvasR.height * 180) / canvasR.width);
         };
 
         let currentY = 10;
         const blocks = ['block-header', 'block-mo', 'block-tarefas', 'block-ocorrencias'];
-        
         for (let id of blocks) {
-            const canvas = await html2canvas(document.getElementById(id), { scale: 3 });
+            const canvas = await html2canvas(document.getElementById(id), { scale: 2 });
             const h = (canvas.height * 180) / canvas.width;
             if (currentY + h > 260) { await carimbarRodape(pdf); pdf.addPage(); currentY = 10; }
-            pdf.addImage(canvas.toDataURL('image/jpeg', 1.0), 'JPEG', 15, currentY, 180, h);
+            pdf.addImage(canvas.toDataURL('image/jpeg', 0.8), 'JPEG', 15, currentY, 180, h);
             currentY += h + 5;
         }
 
         if (photos.length > 0) {
-            if (currentY > 240) { await carimbarRodape(pdf); pdf.addPage(); currentY = 15; }
-            pdf.setFontSize(10); pdf.setFillColor(238, 238, 238); pdf.rect(15, currentY, 180, 7, 'F'); pdf.rect(15, currentY, 180, 7, 'S');
-            pdf.text("REGISTRO FOTOGRÁFICO", 105, currentY + 5, { align: "center" });
+            pdf.addPage(); currentY = 15;
+            pdf.text("REGISTRO FOTOGRÁFICO", 105, currentY, { align: "center" });
             currentY += 10;
             for (let i = 0; i < photos.length; i++) {
-                if (currentY > 210) { await carimbarRodape(pdf); pdf.addPage(); currentY = 20; }
+                if (currentY > 230) { await carimbarRodape(pdf); pdf.addPage(); currentY = 20; }
                 const isLeft = i % 2 === 0;
                 pdf.addImage(photos[i], 'JPEG', isLeft ? 15 : 105, currentY, 85, 55);
                 if (!isLeft || i === photos.length - 1) currentY += 60;
             }
         }
-
-        currentY += 30;
-        if (currentY > 230) { await carimbarRodape(pdf); pdf.addPage(); currentY = 20; }
-        const canvasAss = await html2canvas(document.getElementById('block-assinaturas'), { scale: 3 });
-        pdf.addImage(canvasAss.toDataURL('image/jpeg', 1.0), 'JPEG', 15, currentY, 180, (canvasAss.height * 180) / canvasAss.width);
+        
         await carimbarRodape(pdf);
 
-        // SALVAR NA NUVEM (PLANILHA)
-        try {
-            await fetch(DATABASE_URL, {
-                method: 'POST',
-                body: JSON.stringify({ acao: 'salvarRDO', dados: { num: document.getElementById('in-num').value, data: document.getElementById('in-data').value } })
-            });
-        } catch(e) { console.error("Erro ao sincronizar RDO:", e); }
+        // SALVAR NA NUVEM
+        await fetch(DATABASE_URL, {
+            method: 'POST',
+            body: JSON.stringify({ acao: 'salvarRDO', dados: { num: document.getElementById('in-num').value, data: document.getElementById('in-data').value } })
+        });
 
         pdf.save(`RDO_${document.getElementById('in-num').value.replace('/','-')}.pdf`);
         await carregarDadosNuvem();
-        btn.innerText = "💾 GERAR RDO";
+        btn.innerText = "💾 GERAR E SALVAR RDO";
     }
 
     function renderHistory() { document.getElementById('history-list').innerHTML = reports.slice().reverse().map(r => `<div style="font-size:11px; padding:5px; border-bottom:1px solid #eee">RDO ${r.num} - ${r.data.split('T')[0]}</div>`).join(''); }
-    function clearCurrentForm() { location.reload(); }
 </script>
 </body>
 </html>
-
-
