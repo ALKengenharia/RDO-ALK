@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>ALK Engenharia - RDO v16.1</title>
+    <title>ALK Engenharia - RDO Cloud v17.0</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
@@ -39,7 +39,7 @@
 
 <div id="modalObras" class="modal">
     <div class="modal-content">
-        <h3>Gerenciar Obras Cadastradas</h3>
+        <h3>Gerenciar Obras (Nuvem)</h3>
         <table style="width:100%; border-collapse: collapse;" border="1">
             <thead><tr class="bg-gray"><td>Nome da Obra</td><td style="width:120px">Ações</td></tr></thead>
             <tbody id="lista-obras-gerenciar"></tbody>
@@ -57,31 +57,30 @@
     <button class="btn btn-green" onclick="cadastrarObra()">🏗️ CADASTRAR NOVA OBRA</button>
     <button class="btn btn-admin" onclick="abrirModal()">⚙️ EDITAR / EXCLUIR OBRA</button>
     <a href="https://docs.google.com/spreadsheets/d/1Rz1e44P9wjxqwzZx_LEj2eFiKA87ILRL/edit?usp=sharing" target="_blank" class="btn btn-link">📊 VER EFETIVO NOMINAL</a>
-    <hr style="width:100%">
-    <button class="btn btn-admin" onclick="adminClearHistory()">LIMPAR HISTÓRICO (SENHA)</button>
-    <button class="btn btn-admin" onclick="adminChangePass()">ALTERAR SENHA</button>
 </div>
 
 <div class="main-content">
     <button class="btn btn-clear" onclick="clearCurrentForm()">🧹 NOVO RELATÓRIO</button>
+
     <div class="form-section">
         <h4>1. Identificação</h4>
         <div class="grid-3">
             <div style="grid-column: span 3;">
-                <label>Selecionar Obra Cadastrada</label>
+                <label>Selecionar Obra (Sincronizado)</label>
                 <select id="sel-obra" onchange="carregarDadosObra()">
-                    <option value="">-- Selecione uma obra --</option>
+                    <option value="">-- Carregando obras... --</option>
                 </select>
             </div>
-            <div><label>Nº RDO</label><input type="text" id="in-num"></div>
+            <div><label>Nº RDO</label><input type="text" id="in-num" readonly style="background:#f9f9f9"></div>
             <div><label>Data Atual</label><input type="date" id="in-data"></div>
             <div><label>Obra</label><input type="text" id="in-obra"></div>
-            <div><label>Endereço da Obra</label><input type="text" id="in-endereco"></div>
+            <div><label>Endereço</label><input type="text" id="in-endereco"></div>
             <div><label>Data Início</label><input type="date" id="in-data-inicio"></div>
             <div><label>Prazo</label><input type="text" id="in-prazo"></div>
-            <div style="grid-column: span 3;"><label>Nome Responsável Técnico</label><input type="text" id="in-resp-tec"></div>
+            <div style="grid-column: span 3;"><label>Responsável Técnico</label><input type="text" id="in-resp-tec"></div>
         </div>
     </div>
+
     <div class="form-section">
         <h4>2. Clima</h4>
         <div class="grid-3">
@@ -90,6 +89,7 @@
             <div><label>Noite</label><select id="in-clima-n"><option>NORMAL</option><option>NUBLADO</option><option>CHUVA</option><option>SEM OBRA</option></select></div>
         </div>
     </div>
+
     <div class="form-section">
         <h4>3. Equipe e Equipamentos</h4>
         <div id="mo-area"><div class="grid-input"><input type="text" placeholder="Função" class="mo-funcao"> <input type="number" placeholder="Qtd" class="mo-qtd"></div></div>
@@ -98,11 +98,13 @@
         <div id="eq-area"><div class="grid-input"><input type="text" placeholder="Equipamento" class="eq-nome"> <input type="number" class="eq-qtd" placeholder="Qtd"> <select class="eq-tipo"><option>PRÓPRIO</option><option>LOCADO</option></select></div></div>
         <button class="btn btn-add" onclick="addRow('eq-area')">+ Equipamento</button>
     </div>
+      
     <div class="form-section">
         <h4>4. Relato</h4>
         <label>Tarefas Realizadas</label><textarea id="in-tarefas" rows="6"></textarea>
         <label>Ocorrências</label><textarea id="in-ocorrencias" rows="3"></textarea>
     </div>
+
     <div class="form-section">
         <h4>5. Fotos e Logos</h4>
         <div class="grid-3">
@@ -111,7 +113,8 @@
             <div><label>Fotos</label><input type="file" id="in-fotos" multiple onchange="loadPhotos(this)"></div>
         </div>
     </div>
-    <button class="btn btn-pdf" onclick="generatePDF()">💾 GERAR RDO</button>
+
+    <button class="btn btn-pdf" id="btn-gerar" onclick="generatePDF()">💾 GERAR RDO</button>
 </div>
 
 <div id="pdf-render-zone">
@@ -157,52 +160,86 @@
 </div>
 
 <script>
-    let reports = JSON.parse(localStorage.getItem('alk_v15_final') || '[]');
-    let obras = JSON.parse(localStorage.getItem('alk_obras') || '[]');
+    const DATABASE_URL = "https://script.google.com/macros/s/AKfycbwtVGkFwyybyK7ws6d8yp_WN_SkwOqyp250qTkc_JV3r1930cGgrRTSbFcsWPM9NPjHqA/exec";
+    let reports = [];
+    let obras = [];
     let photos = [];
-    const SPREADSHEET_URL = "https://docs.google.com/spreadsheets/d/1Rz1e44P9wjxqwzZx_LEj2eFiKA87ILRL/edit?usp=sharing";
 
-    window.onload = () => { renderHistory(); loadSettings(); setNum(); atualizarListaObras(); };
+    window.onload = async () => { 
+        loadSettings(); 
+        await carregarDadosNuvem(); 
+    };
 
-    function setNum() { document.getElementById('in-num').value = (reports.length + 1).toString().padStart(3, '0') + "/2026"; }
-    function salvarObras() { localStorage.setItem('alk_obras', JSON.stringify(obras)); atualizarListaObras(); }
+    async function carregarDadosNuvem() {
+        try {
+            const response = await fetch(DATABASE_URL);
+            const data = await response.json();
+            reports = data.historico || [];
+            obras = data.obras || [];
+            renderHistory();
+            atualizarListaObras();
+            setNum();
+        } catch (e) { 
+            console.error("Erro na nuvem:", e); 
+            document.getElementById('sel-obra').innerHTML = '<option>Erro ao carregar</option>';
+        }
+    }
+
+    function setNum() { 
+        const proximo = (reports.length + 1).toString().padStart(3, '0');
+        document.getElementById('in-num').value = proximo + "/2026"; 
+    }
+
     function atualizarListaObras() {
         const sel = document.getElementById('sel-obra');
         sel.innerHTML = '<option value="">-- Selecione uma obra --</option>';
         obras.forEach((o, index) => { sel.innerHTML += `<option value="${index}">${o.nome}</option>`; });
     }
+
     function carregarDadosObra() {
         const idx = document.getElementById('sel-obra').value; if(idx === "") return;
         const o = obras[idx];
         document.getElementById('in-obra').value = o.nome;
         document.getElementById('in-endereco').value = o.endereco;
-        if(o.inicio) document.getElementById('in-data-inicio').value = o.inicio;
+        if(o.inicio) document.getElementById('in-data-inicio').value = o.inicio.split('T')[0];
         document.getElementById('in-prazo').value = o.prazo;
         document.getElementById('in-resp-tec').value = o.resp;
     }
-    function cadastrarObra() {
+
+    async function cadastrarObra() {
         const nome = prompt("Nome da Obra:"); if(!nome) return;
-        obras.push({ nome, endereco: prompt("Endereço:"), inicio: prompt("Data (AAAA-MM-DD):"), prazo: prompt("Prazo:"), resp: prompt("Responsável:") });
-        salvarObras();
+        const nova = {
+            nome: nome,
+            endereco: prompt("Endereço:"),
+            inicio: prompt("Data Início (AAAA-MM-DD):"),
+            prazo: prompt("Prazo:"),
+            resp: prompt("Responsável:")
+        };
+        await fetch(DATABASE_URL, { method: 'POST', body: JSON.stringify({ acao: 'salvarObra', dados: nova }) });
+        await carregarDadosNuvem();
     }
-    function editarObra(idx) {
-        const o = obras[idx];
-        const novoNome = prompt("Editar Nome da Obra:", o.nome); if(!novoNome) return;
-        obras[idx] = { nome: novoNome, endereco: prompt("Endereço:", o.endereco), inicio: prompt("Início:", o.inicio), prazo: prompt("Prazo:", o.prazo), resp: prompt("Responsável:", o.resp) };
-        salvarObras(); abrirModal();
+
+    async function excluirObra(i) {
+        if(confirm("Excluir da nuvem?")) {
+            await fetch(DATABASE_URL, { method: 'POST', body: JSON.stringify({ acao: 'excluirObra', nome: obras[i].nome }) });
+            await carregarDadosNuvem();
+            abrirModal();
+        }
     }
+
     function abrirModal() {
         const lista = document.getElementById('lista-obras-gerenciar');
-        lista.innerHTML = obras.map((o, i) => `<tr><td style="padding:5px;">${o.nome}</td><td style="text-align:center;"><button class="btn btn-edit" onclick="editarObra(${i})">EDITAR</button><button class="btn btn-delete" onclick="excluirObra(${i})">EXCLUIR</button></td></tr>`).join('');
+        lista.innerHTML = obras.map((o, i) => `<tr><td style="padding:5px;">${o.nome}</td><td style="text-align:center;"><button class="btn btn-delete" onclick="excluirObra(${i})">EXCLUIR</button></td></tr>`).join('');
         document.getElementById('modalObras').style.display = 'block';
     }
     function fecharModal() { document.getElementById('modalObras').style.display = 'none'; }
-    function excluirObra(i) { if(confirm("Excluir?")) { obras.splice(i,1); salvarObras(); abrirModal(); } }
+
     function addRow(id) {
         const div = document.createElement('div'); div.className = 'grid-input';
         div.innerHTML = id === 'mo-area' ? '<input type="text" placeholder="Função" class="mo-funcao"> <input type="number" placeholder="Qtd" class="mo-qtd">' : '<input type="text" class="eq-nome"> <input type="number" class="eq-qtd"> <select class="eq-tipo"><option>PRÓPRIO</option><option>LOCADO</option></select>';
         document.getElementById(id).appendChild(div);
     }
+
     function saveImg(i, k) { const r = new FileReader(); r.onload = (e) => { localStorage.setItem(k, e.target.result); loadSettings(); }; r.readAsDataURL(i.files[0]); }
     function loadSettings() {
         const l = localStorage.getItem('alk_logo'), f = localStorage.getItem('alk_footer');
@@ -212,11 +249,11 @@
     function loadPhotos(i) { photos = []; Array.from(i.files).forEach(f => { const r = new FileReader(); r.onload = (e) => photos.push(e.target.result); r.readAsDataURL(f); }); }
 
     async function generatePDF() {
-        const btn = document.querySelector('.btn-pdf'); btn.innerText = "⏳ GERANDO...";
+        const btn = document.getElementById('btn-gerar'); btn.innerText = "⏳ GERANDO E SINCRONIZANDO...";
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF('p', 'mm', 'a4');
         
-        // Sincronizar dados
+        // Sync Visuals
         document.getElementById('out-num').innerText = document.getElementById('in-num').value;
         document.getElementById('out-obra').innerText = document.getElementById('in-obra').value;
         document.getElementById('out-data').innerText = document.getElementById('in-data').value;
@@ -239,11 +276,9 @@
             const n = r.querySelector('.eq-nome').value; if(n) eqT.innerHTML += `<tr><td>${n}</td><td style="text-align:center">${r.querySelector('.eq-qtd').value}</td><td style="font-size:8px;">${r.querySelector('.eq-tipo').value}</td></tr>`;
         });
 
-        // Função para carimbar o rodapé em cada página nova
         const carimbarRodape = async (p) => {
             const canvasR = await html2canvas(document.getElementById('block-rodape-img'), { scale: 3 });
-            const hR = (canvasR.height * 180) / canvasR.width;
-            p.addImage(canvasR.toDataURL('image/jpeg', 1.0), 'JPEG', 15, 270, 180, hR);
+            p.addImage(canvasR.toDataURL('image/jpeg', 1.0), 'JPEG', 15, 270, 180, (canvasR.height * 180) / canvasR.width);
         };
 
         let currentY = 10;
@@ -252,12 +287,7 @@
         for (let id of blocks) {
             const canvas = await html2canvas(document.getElementById(id), { scale: 3 });
             const h = (canvas.height * 180) / canvas.width;
-            
-            if (currentY + h > 260) { 
-                await carimbarRodape(pdf);
-                pdf.addPage(); 
-                currentY = 10; 
-            }
+            if (currentY + h > 260) { await carimbarRodape(pdf); pdf.addPage(); currentY = 10; }
             pdf.addImage(canvas.toDataURL('image/jpeg', 1.0), 'JPEG', 15, currentY, 180, h);
             currentY += h + 5;
         }
@@ -267,39 +297,34 @@
             pdf.setFontSize(10); pdf.setFillColor(238, 238, 238); pdf.rect(15, currentY, 180, 7, 'F'); pdf.rect(15, currentY, 180, 7, 'S');
             pdf.text("REGISTRO FOTOGRÁFICO", 105, currentY + 5, { align: "center" });
             currentY += 10;
-
             for (let i = 0; i < photos.length; i++) {
-                if (currentY > 210) { 
-                    await carimbarRodape(pdf);
-                    pdf.addPage(); 
-                    currentY = 20; 
-                }
+                if (currentY > 210) { await carimbarRodape(pdf); pdf.addPage(); currentY = 20; }
                 const isLeft = i % 2 === 0;
                 pdf.addImage(photos[i], 'JPEG', isLeft ? 15 : 105, currentY, 85, 55);
                 if (!isLeft || i === photos.length - 1) currentY += 60;
             }
         }
 
-        // ESPAÇAMENTO E ASSINATURAS NO FINAL
         currentY += 30;
         if (currentY > 230) { await carimbarRodape(pdf); pdf.addPage(); currentY = 20; }
-        
         const canvasAss = await html2canvas(document.getElementById('block-assinaturas'), { scale: 3 });
-        const hAss = (canvasAss.height * 180) / canvasAss.width;
-        pdf.addImage(canvasAss.toDataURL('image/jpeg', 1.0), 'JPEG', 15, currentY, 180, hAss);
-        
-        // Último carimbo de rodapé na última página
+        pdf.addImage(canvasAss.toDataURL('image/jpeg', 1.0), 'JPEG', 15, currentY, 180, (canvasAss.height * 180) / canvasAss.width);
         await carimbarRodape(pdf);
 
+        // SALVAR NA NUVEM (PLANILHA)
+        try {
+            await fetch(DATABASE_URL, {
+                method: 'POST',
+                body: JSON.stringify({ acao: 'salvarRDO', dados: { num: document.getElementById('in-num').value, data: document.getElementById('in-data').value } })
+            });
+        } catch(e) { console.error("Erro ao sincronizar RDO:", e); }
+
         pdf.save(`RDO_${document.getElementById('in-num').value.replace('/','-')}.pdf`);
-        reports.push({num: document.getElementById('in-num').value, data: document.getElementById('in-data').value});
-        localStorage.setItem('alk_v15_final', JSON.stringify(reports));
-        renderHistory(); setNum(); btn.innerText = "💾 GERAR RDO";
+        await carregarDadosNuvem();
+        btn.innerText = "💾 GERAR RDO";
     }
 
-    function renderHistory() { document.getElementById('history-list').innerHTML = reports.slice().reverse().map(r => `<div style="font-size:11px; padding:5px; border-bottom:1px solid #eee">RDO ${r.num}</div>`).join(''); }
-    function adminClearHistory() { if(prompt("Senha:") === (localStorage.getItem('alk_pass') || '0000')) { localStorage.setItem('alk_v15_final', '[]'); location.reload(); } }
-    function adminChangePass() { if(prompt("Senha:") === (localStorage.getItem('alk_pass') || '0000')) { const n = prompt("Nova:"); if(n) localStorage.setItem('alk_pass', n); } }
+    function renderHistory() { document.getElementById('history-list').innerHTML = reports.slice().reverse().map(r => `<div style="font-size:11px; padding:5px; border-bottom:1px solid #eee">RDO ${r.num} - ${r.data.split('T')[0]}</div>`).join(''); }
     function clearCurrentForm() { location.reload(); }
 </script>
 </body>
